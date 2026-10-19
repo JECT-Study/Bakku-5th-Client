@@ -1,0 +1,41 @@
+name: 버그 수정
+description: develop 기준 버그 수정 (develop에서 fix/{이슈번호}-{요약} 브랜치 자동 생성)
+title: '[Fix] '
+labels: ['fix']
+body:
+  - type: input
+    id: branch
+    attributes:
+      label: 브랜치 요약 (영문)
+      description: 영문 소문자와 하이픈만 사용합니다. 브랜치는 fix/{이슈번호}-{요약} 으로 생성됩니다.
+      placeholder: login-redirect
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 버그 내용
+      description: 어떤 문제가 발생하는지 적어주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법
+      value: |
+        1.
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+  - type: dropdown
+    id: environment
+    attributes:
+      label: 발생 환경
+      multiple: true
+      options:
+        - dev
+        - staging
+        - iOS
+        - Android
+        - Web

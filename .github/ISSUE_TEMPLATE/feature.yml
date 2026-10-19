@@ -1,0 +1,31 @@
+name: 기능 개발
+description: 새 기능 작업 (develop에서 feature/{이슈번호}-{요약} 브랜치 자동 생성)
+title: '[Feature] '
+labels: ['feature']
+body:
+  - type: input
+    id: branch
+    attributes:
+      label: 브랜치 요약 (영문)
+      description: 영문 소문자와 하이픈만 사용합니다. 브랜치는 feature/{이슈번호}-{요약} 으로 생성됩니다.
+      placeholder: member-signup
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 작업 내용
+      description: 어떤 기능을 왜 만드는지 적어주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 할 일
+      value: |
+        - [ ]
+  - type: textarea
+    id: reference
+    attributes:
+      label: 참고 자료
+      description: 기획서, 디자인 링크 등

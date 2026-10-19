@@ -1,0 +1,88 @@
+name: Create Issue Branch
+
+# 이슈가 열리면 브랜치 전략에 맞춰 브랜치를 자동 생성한다.
+#   feature → develop 에서 feature/{이슈번호}-{요약}
+#   fix     → develop 에서 fix/{이슈번호}-{요약}
+#   hotfix  → main    에서 hotfix/{이슈번호}-{요약}
+# 타입은 라벨(feature/fix/hotfix)로, 라벨이 없으면 제목 접두사([Feature] 등)로 판단한다.
+# 요약은 이슈 폼의 "브랜치 요약 (영문)" 값을 사용한다.
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const BASES = { feature: 'develop', fix: 'develop', hotfix: 'main' };
+
+            const labels = issue.labels.map((label) => label.name.toLowerCase());
+            let type = ['hotfix', 'fix', 'feature'].find((t) => labels.includes(t));
+            if (!type) {
+              type = issue.title.match(/^\s*\[(feature|fix|hotfix)\]/i)?.[1].toLowerCase();
+            }
+            if (!type) {
+              core.info('feature/fix/hotfix 이슈가 아니므로 브랜치를 만들지 않습니다.');
+              return;
+            }
+
+            const raw = (issue.body ?? '').match(/###\s*브랜치 요약 \(영문\)\s*\n+([^\n]*)/)?.[1].trim() ?? '';
+            const summary = raw === '_No response_'
+              ? ''
+              : raw
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-+|-+$/g, '')
+                  .slice(0, 50)
+                  .replace(/-+$/, '');
+            const branch = summary ? `${type}/${issue.number}-${summary}` : `${type}/${issue.number}`;
+            const base = BASES[type];
+
+            const comment = (body) =>
+              github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body });
+
+            let sha;
+            try {
+              const { data } = await github.rest.git.getRef({ ...context.repo, ref: `heads/${base}` });
+              sha = data.object.sha;
+            } catch (error) {
+              if (error.status === 404 || error.status === 409) {
+                await comment(`⚠️ 기준 브랜치 \`${base}\`가 없어 브랜치를 만들지 못했습니다. \`${base}\` 브랜치를 먼저 만들어주세요.`);
+                return;
+              }
+              throw error;
+            }
+
+            try {
+              await github.rest.git.createRef({ ...context.repo, ref: `refs/heads/${branch}`, sha });
+            } catch (error) {
+              if (error.status === 422) {
+                await comment(`ℹ️ \`${branch}\` 브랜치가 이미 있습니다.`);
+                return;
+              }
+              throw error;
+            }
+
+            const prGuide = type === 'hotfix'
+              ? '작업 후 `main`과 `develop` 양쪽으로 PR을 올려주세요.'
+              : '작업 후 `develop`으로 PR을 올려주세요.';
+
+            await comment([
+              `🌱 \`${base}\`에서 \`${branch}\` 브랜치를 만들었습니다.`,
+              '',
+              '```bash',
+              'git fetch origin',
+              `git switch ${branch}`,
+              '```',
+              '',
+              prGuide,
+            ].join('\n'));

@@ -1,0 +1,26 @@
+name: 핫픽스
+description: 운영(prod) 긴급 수정 (main에서 hotfix/{이슈번호}-{요약} 브랜치 자동 생성 → main, develop 양쪽에 머지)
+title: '[Hotfix] '
+labels: ['hotfix']
+body:
+  - type: input
+    id: branch
+    attributes:
+      label: 브랜치 요약 (영문)
+      description: 영문 소문자와 하이픈만 사용합니다. 브랜치는 hotfix/{이슈번호}-{요약} 으로 생성됩니다.
+      placeholder: payment-crash
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 장애 내용
+      description: 운영에서 발생한 문제와 영향 범위를 적어주세요.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 방법
+      value: |
+        1.

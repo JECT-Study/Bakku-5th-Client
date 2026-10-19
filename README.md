@@ -77,3 +77,7 @@ features/<기능>/
 - 여러 기능에서 쓰는 코드만 `shared`로 올립니다. 기능끼리는 서로 직접 import 하지 않습니다.
 - 서버 데이터는 TanStack Query, 로그인 토큰·UI 상태 등 클라이언트 전역 상태는 Zustand로 관리합니다.
 - 패키지 추가 시 `npx expo install <패키지>` 를 사용하면 SDK에 맞는 버전이 설치됩니다.
+
+## 협업 규칙
+
+브랜치 전략, 이슈 → 브랜치 자동 생성, CI는 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
