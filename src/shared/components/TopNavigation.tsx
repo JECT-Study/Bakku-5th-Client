@@ -1,6 +1,7 @@
 import { semantic } from '@/design-tokens';
 import { CaretDownIcon } from 'phosphor-react-native/src/icons/CaretDown';
 import { CaretLeftIcon } from 'phosphor-react-native/src/icons/CaretLeft';
+import { XIcon } from 'phosphor-react-native/src/icons/X';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -55,9 +56,13 @@ type ScreenProps = CommonProps & {
   title?: string;
   description?: string;
   onBack?: () => void;
+  /** 왼쪽 버튼 모양. 아래에서 올라오는 화면은 'close'(X) */
+  backType?: 'back' | 'close';
   /** 오른쪽 텍스트 버튼 */
   trailingLabel?: string;
   onTrailingPress?: () => void;
+  /** 오른쪽 아이콘 버튼 (trailingLabel 이 없을 때) */
+  actions?: TopNavigationAction[];
 };
 
 type TopNavigationProps = HomeProps | ScreenProps;
@@ -130,7 +135,15 @@ function HomeBar({ title, onTitlePress, actions = [] }: HomeProps) {
   );
 }
 
-function ScreenBar({ title, description, onBack, trailingLabel, onTrailingPress }: ScreenProps) {
+function ScreenBar({
+  title,
+  description,
+  onBack,
+  backType = 'back',
+  trailingLabel,
+  onTrailingPress,
+  actions = [],
+}: ScreenProps) {
   return (
     <View className="h-14 flex-row items-center justify-between p-1.5">
       {title ? (
@@ -157,7 +170,11 @@ function ScreenBar({ title, description, onBack, trailingLabel, onTrailingPress 
       ) : null}
       {onBack ? (
         <View className="p-2.5">
-          <IconButton icon={CaretLeftIcon} accessibilityLabel="뒤로 가기" onPress={onBack} />
+          {backType === 'close' ? (
+            <IconButton icon={XIcon} accessibilityLabel="닫기" onPress={onBack} />
+          ) : (
+            <IconButton icon={CaretLeftIcon} accessibilityLabel="뒤로 가기" onPress={onBack} />
+          )}
         </View>
       ) : (
         <View />
@@ -168,7 +185,13 @@ function ScreenBar({ title, description, onBack, trailingLabel, onTrailingPress 
             {trailingLabel}
           </LabelButton>
         </View>
-      ) : null}
+      ) : (
+        <View className="flex-row items-center">
+          {actions.map((action) => (
+            <ActionButton key={action.accessibilityLabel} {...action} />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
