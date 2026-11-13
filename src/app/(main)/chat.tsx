@@ -1,5 +1,5 @@
-import MainScreenPlaceholder from '@/features/home/components/MainScreenPlaceholder';
+import { ChatListScreen } from '@/features/appointment/chat';
 
 export default function ChatRoute() {
-  return <MainScreenPlaceholder title="채팅" />;
+  return <ChatListScreen />;
 }
