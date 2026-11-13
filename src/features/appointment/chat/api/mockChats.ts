@@ -1,4 +1,10 @@
-import type { ChatMessage, ChatRoomDetail, ChatRoomSummary, ExchangeItem } from '../types';
+import type {
+  Appointment,
+  ChatMessage,
+  ChatRoomDetail,
+  ChatRoomSummary,
+  ExchangeItem,
+} from '../types';
 
 // 서버 API 가 붙기 전까지 쓰는 화면 확인용 더미 데이터 (와이어프레임 E. 채팅·약속 기준)
 
@@ -90,6 +96,32 @@ const REQUEST_ITEMS: ExchangeItem[] = [
   { id: 'i4', name: '마이멜로디 미니 피규어 세트', condition: 'sealed' },
 ];
 
+const tomorrowAt = (hour: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(hour, 0, 0, 0);
+  return date.toISOString();
+};
+
+const TOMORROW_3PM: Appointment = {
+  meetAt: tomorrowAt(15),
+  place: '홍대입구역 9번 출구',
+  items: REQUEST_ITEMS.slice(0, 3),
+  isNow: false,
+};
+
+const SATURDAY_3PM: Appointment = {
+  meetAt: (() => {
+    const date = new Date();
+    date.setDate(date.getDate() + ((6 - date.getDay() + 7) % 7 || 7));
+    date.setHours(15, 0, 0, 0);
+    return date.toISOString();
+  })(),
+  place: '홍대입구역 9번 출구',
+  items: REQUEST_ITEMS.slice(0, 3),
+  isNow: false,
+};
+
 function buildMessages(room: ChatRoomSummary): ChatMessage[] {
   const start = new Date(new Date(room.lastMessageAt).getTime() - 20 * 60 * 1000).toISOString();
   const request: ChatMessage = {
@@ -106,7 +138,43 @@ function buildMessages(room: ChatRoomSummary): ChatMessage[] {
     sentAt: start,
     text: '치이카와 피규어랑 꼭 바꾸고 싶어요!',
   };
-  if (room.id === '1') return [request, intro];
+  if (room.id === '1') {
+    // 채팅·약속-5: 상대가 보낸 약속 제안 (받는 쪽에서 거절 / 수락하기)
+    return [
+      request,
+      intro,
+      {
+        id: '1-m3',
+        type: 'text',
+        sender: 'other',
+        sentAt: room.lastMessageAt,
+        text: '내일 3시에 홍대 어떠세요?',
+      },
+      {
+        id: '1-m4',
+        type: 'proposal',
+        sender: 'other',
+        sentAt: room.lastMessageAt,
+        state: 'pending',
+        appointment: TOMORROW_3PM,
+      },
+    ];
+  }
+  if (room.id === '4') {
+    // 채팅·약속-5 (수락 후): 제안 카드가 '약속 확정' 카드로 바뀌고 글은 예약중
+    return [
+      request,
+      intro,
+      {
+        id: '4-m3',
+        type: 'proposal',
+        sender: 'me',
+        sentAt: room.lastMessageAt,
+        state: 'accepted',
+        appointment: SATURDAY_3PM,
+      },
+    ];
+  }
   return [
     request,
     intro,
@@ -138,11 +206,10 @@ export function getMockChatRoom(id: string): ChatRoomDetail | undefined {
       title: '치이카와 미니 피규어',
       offerSummary: '우사기 키링 외 3개',
       status: room.status,
-      // 2번 방은 '지금 바로' 교환글로 두어 약속 잡기의 두 가지 화면을 모두 볼 수 있게 한다
-      timing: room.id === '2' ? 'now' : 'scheduled',
       place: '홍대입구역 9번 출구',
     },
-    requestItems: room.id === '2' ? REQUEST_ITEMS.slice(0, 1) : REQUEST_ITEMS.slice(0, 3),
+    requestItems: REQUEST_ITEMS,
     messages: buildMessages(room),
+    appointment: room.id === '4' ? SATURDAY_3PM : null,
   };
 }

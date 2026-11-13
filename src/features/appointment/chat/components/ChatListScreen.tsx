@@ -1,11 +1,12 @@
 import { BellIcon } from 'phosphor-react-native/src/icons/Bell';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 
-import { EmptyState, TopNavigation, type TopNavigationTab } from '@/shared/components';
+import { TopNavigation, type TopNavigationTab } from '@/shared/components';
 
 import { MOCK_CHAT_ROOMS } from '../api/mockChats';
+import { useChatStore } from '../store/useChatStore';
 import type { ExchangeStatus } from '../types';
 import { ChatListItem } from './ChatListItem';
 import { SheetMenu } from './SheetMenu';
@@ -21,7 +22,16 @@ const STATUS_OPTIONS: { key: ExchangeStatus; label: string }[] = [
 ];
 
 export function ChatListScreen() {
-  const rooms = MOCK_CHAT_ROOMS;
+  // 약속 확정 · 취소로 바뀐 글 상태(예약중 등)를 목록에도 반영한다
+  const roomDetails = useChatStore((state) => state.rooms);
+  const rooms = useMemo(
+    () =>
+      MOCK_CHAT_ROOMS.map((summary) => ({
+        ...summary,
+        status: roomDetails[summary.id]?.post.status ?? summary.status,
+      })),
+    [roomDetails],
+  );
   const [filter, setFilter] = useState<Filter>('all');
   const [status, setStatus] = useState<ExchangeStatus | null>(null);
   const [statusSheetOpen, setStatusSheetOpen] = useState(false);
@@ -57,7 +67,7 @@ export function ChatListScreen() {
   };
 
   return (
-    <View className="flex-1 bg-surface-standard">
+    <View className="flex-1 bg-white">
       <TopNavigation
         type="home"
         title="채팅"
@@ -67,24 +77,37 @@ export function ChatListScreen() {
         }
       />
       {rooms.length === 0 ? (
-        <View className="flex-1 justify-center">
-          <EmptyState
-            title="채팅방이 없어요."
-            action={{ label: '교환글 둘러보기', onPress: () => router.navigate('/home') }}
-          />
+        // 채팅·약속-1(비어있음): 16 Medium 회색 문구 + 회색 버튼
+        <View className="flex-1 items-center justify-center gap-4">
+          <Text className="font-sans text-label-lg font-medium text-gray-300">
+            채팅방이 없어요.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.navigate('/home')}
+            className="rounded-8 bg-gray-75 px-3 py-2"
+          >
+            <Text className="font-sans text-label-md font-medium text-gray-700">
+              교환글 둘러보기
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <FlatList
           data={visibleRooms}
           keyExtractor={(room) => room.id}
-          contentContainerClassName="py-2"
+          contentContainerClassName="pb-2 pt-1.5"
           renderItem={({ item }) => (
             <ChatListItem
               room={item}
               onPress={() => router.push({ pathname: '/chat/[id]', params: { id: item.id } })}
             />
           )}
-          ListEmptyComponent={<EmptyState title="조건에 맞는 채팅방이 없어요." />}
+          ListEmptyComponent={
+            <Text className="py-10 text-center font-sans text-label-lg font-medium text-gray-300">
+              조건에 맞는 채팅방이 없어요.
+            </Text>
+          }
         />
       )}
       <SheetMenu

@@ -32,6 +32,12 @@ export function formatDateDivider(value: string | Date) {
   return `${date.getMonth() + 1}월 ${date.getDate()}일 (${WEEKDAYS[date.getDay()]})`;
 }
 
+/** 채팅방 상단 약속 배너: 10.30(목) */
+export function formatShortDate(value: string | Date) {
+  const date = new Date(value);
+  return `${date.getMonth() + 1}.${date.getDate()}(${WEEKDAYS[date.getDay()]})`;
+}
+
 export function isDifferentDay(a: string, b: string) {
   return !isSameDay(new Date(a), new Date(b));
 }

@@ -4,9 +4,6 @@ export type ExchangeStatus = 'available' | 'reserved' | 'completed';
 /** 물건 상태 */
 export type ItemCondition = 'sealed' | 'opened';
 
-/** 교환 시기: 지금 바로 / 약속 잡고 */
-export type ExchangeTiming = 'now' | 'scheduled';
-
 /** 내가 보낸 요청인지, 받은 요청인지 */
 export type RequestDirection = 'received' | 'sent';
 
@@ -38,10 +35,28 @@ type MessageBase = {
   sentAt: string;
 };
 
+export type Appointment = {
+  /** 만나는 시각 (ISO) */
+  meetAt: string;
+  place: string;
+  items: ExchangeItem[];
+  /** '지금 바로'로 잡은 약속 */
+  isNow: boolean;
+};
+
+/**
+ * 약속 제안 카드 상태.
+ * pending: 받는 쪽은 [거절] [수락하기], 보낸 쪽은 '수락 대기중'
+ * accepted: 카드가 '약속 확정' 카드로 바뀐다
+ * rejected: '거절했어요'
+ */
+export type ProposalState = 'pending' | 'accepted' | 'rejected';
+
 export type ChatMessage =
   | (MessageBase & { type: 'text'; text: string })
   | (MessageBase & { type: 'image'; uri: string })
-  | (MessageBase & { type: 'request'; items: ExchangeItem[] });
+  | (MessageBase & { type: 'request'; items: ExchangeItem[] })
+  | (MessageBase & { type: 'proposal'; appointment: Appointment; state: ProposalState });
 
 export type ChatRoomDetail = {
   id: string;
@@ -52,11 +67,12 @@ export type ChatRoomDetail = {
     /** 내놓은 물건 요약 (예: 우사기 키링 외 3개) */
     offerSummary: string;
     status: ExchangeStatus;
-    timing: ExchangeTiming;
     /** 교환글에 적힌 희망 장소 */
     place: string;
   };
   /** 이번 교환에서 오가는 물건 (약속 잡기의 교환할 물건 후보) */
   requestItems: ExchangeItem[];
   messages: ChatMessage[];
+  /** 확정된 약속 (채팅방 상단 배너). 있으면 글은 예약중 */
+  appointment: Appointment | null;
 };

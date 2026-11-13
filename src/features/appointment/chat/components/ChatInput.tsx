@@ -1,4 +1,3 @@
-import { semantic } from '@/design-tokens';
 import { ArrowUpIcon } from 'phosphor-react-native/src/icons/ArrowUp';
 import { PlusIcon } from 'phosphor-react-native/src/icons/Plus';
 import { useState } from 'react';
@@ -7,12 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Icon } from '@/shared/components';
 
+import { WIRE } from './wire';
+
 type ChatInputProps = {
   onSend: (text: string) => void;
   onPlusPress: () => void;
 };
 
-// 채팅방 하단 입력창: [+] [메시지 입력 (최대 4줄)] [보내기]
+// 채팅방 하단 입력창: 회색 둥근 칸 안에 [+] [메시지 16 (최대 4줄)] [보내기], 버튼은 흰 원 32
 export function ChatInput({ onSend, onPlusPress }: ChatInputProps) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
@@ -25,24 +26,24 @@ export function ChatInput({ onSend, onPlusPress }: ChatInputProps) {
   };
 
   return (
-    <View className="bg-surface-standard px-2 pt-2" style={{ paddingBottom: insets.bottom + 8 }}>
-      <View className="flex-row items-end gap-2 rounded-[22px] bg-fill-subtlest p-1">
+    <View className="bg-white px-2 pt-2" style={{ paddingBottom: insets.bottom + 8 }}>
+      <View className="flex-row items-end gap-2 rounded-max bg-gray-50 p-1.5">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="사진, 약속 잡기 등 더보기"
           onPress={onPlusPress}
-          className="size-9 items-center justify-center rounded-full bg-surface-standard"
+          className="size-8 items-center justify-center rounded-full bg-white"
         >
-          <Icon icon={PlusIcon} size="lg" color={semantic.object.boldest} />
+          <Icon icon={PlusIcon} size="lg" color={WIRE.strong} />
         </Pressable>
         <TextInput
           value={text}
           onChangeText={setText}
           multiline
           placeholder="메세지를 입력하세요."
-          placeholderTextColor={semantic.object.assistive}
+          placeholderTextColor={WIRE.alternative}
           accessibilityLabel="메시지 입력"
-          className="max-h-[88px] min-h-9 flex-1 py-2 font-sans text-body-sm text-object-bolder"
+          className="max-h-[88px] min-h-8 flex-1 py-1 font-sans text-label-lg text-gray-900"
           style={{ textAlignVertical: 'center' }}
         />
         <Pressable
@@ -51,13 +52,9 @@ export function ChatInput({ onSend, onPlusPress }: ChatInputProps) {
           accessibilityState={{ disabled: !canSend }}
           disabled={!canSend}
           onPress={send}
-          className={`size-9 items-center justify-center rounded-full ${canSend ? 'bg-fill-bolder' : 'bg-surface-standard'}`}
+          className={`size-8 items-center justify-center rounded-full ${canSend ? 'bg-gray-600' : 'bg-white'}`}
         >
-          <Icon
-            icon={ArrowUpIcon}
-            size="lg"
-            color={canSend ? semantic.object.inverse.boldest : semantic.object.subtle}
-          />
+          <Icon icon={ArrowUpIcon} size="lg" color={canSend ? WIRE.white : WIRE.assistive} />
         </Pressable>
       </View>
     </View>

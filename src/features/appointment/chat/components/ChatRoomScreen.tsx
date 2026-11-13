@@ -1,4 +1,4 @@
-import { semantic } from '@/design-tokens';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { ArrowsLeftRightIcon } from 'phosphor-react-native/src/icons/ArrowsLeftRight';
@@ -16,58 +16,72 @@ import {
   View,
 } from 'react-native';
 
-import { EmptyState, Icon, Thumbnail, TopNavigation } from '@/shared/components';
+import { EmptyState, Icon, TopNavigation } from '@/shared/components';
 
-import { getMockChatRoom } from '../api/mockChats';
-import type { ChatMessage, ChatRoomDetail } from '../types';
+import { useChatStore } from '../store/useChatStore';
+import type { ChatRoomDetail } from '../types';
 import { isDifferentDay } from '../utils/formatTime';
+import { AppointmentBanner } from './AppointmentCards';
 import { ChatInput } from './ChatInput';
 import { DateDivider, MessageItem } from './MessageItems';
-import { SheetMenu } from './SheetMenu';
+import { SheetMenu, type SheetMenuOption } from './SheetMenu';
 import { ExchangeStatusBadge } from './StatusBadges';
+import { WIRE, WireDialog } from './wire';
 
-// E 채팅·약속-2 ~ 3: 1:1 채팅방, + 버튼 메뉴
+// E 채팅·약속-2 ~ 6 (1차): 1:1 채팅방, + 메뉴, 약속 제안 카드, 약속 수락 모달, 약속 확정(예약중)
 
-const PLUS_MENU = [
-  { key: 'photo', label: '사진', icon: ImageIcon },
-  { key: 'appointment', label: '약속 잡기', icon: CalendarCheckIcon },
-  { key: 'place', label: '장소 보내기 (2차)', icon: MapPinIcon, disabled: true },
-];
+/** + 메뉴 시트가 사라지는 시간 */
+const SHEET_CLOSE_MS = 350;
 
+function plusMenu(reserved: boolean): SheetMenuOption[] {
+  return [
+    { key: 'photo', label: '사진', icon: ImageIcon },
+    // 약속이 확정(예약중)되면 새 약속을 잡을 수 없다
+    { key: 'appointment', label: '약속 잡기', icon: CalendarCheckIcon, disabled: reserved },
+    { key: 'place', label: '장소 보내기 (2차)', icon: MapPinIcon, disabled: true },
+  ];
+}
+
+/** 교환글 요약: 사진 48 r8 · 제목 16 SemiBold · 요약 12 Medium · 상태 태그 */
 function PostSummary({ post }: { post: ChatRoomDetail['post'] }) {
   return (
-    <View className="flex-row items-center gap-3 border-b border-stroke-alpha-subtler bg-surface-standard px-4 py-3">
-      <Thumbnail source={post.thumbnailUrl} size={48} cornerStyle="curved" variant="hollow" />
-      <View className="flex-1 gap-0.5">
-        <Text
-          numberOfLines={1}
-          className="font-sans text-label-lg font-semibold text-object-boldest"
-        >
-          {post.title}
-        </Text>
-        <View className="flex-row items-center gap-1">
-          <Icon icon={ArrowsLeftRightIcon} size="xs" color={semantic.object.assistive} />
-          <Text numberOfLines={1} className="font-sans text-label-sm text-object-alternative">
-            {post.offerSummary}
+    <View className="flex-row items-center gap-4 border-b border-gray-75 bg-white px-4 py-3">
+      {post.thumbnailUrl ? (
+        <Image
+          source={post.thumbnailUrl}
+          contentFit="cover"
+          style={{ width: 48, height: 48, borderRadius: 8 }}
+        />
+      ) : (
+        <View className="size-12 rounded-8 bg-gray-50" />
+      )}
+      <View className="flex-1 flex-row items-center gap-0.5">
+        <View className="flex-1 gap-0.5">
+          <Text numberOfLines={1} className="font-sans text-label-lg font-semibold text-gray-900">
+            {post.title}
           </Text>
+          <View className="flex-row items-center gap-0.5">
+            <Icon icon={ArrowsLeftRightIcon} size="sm" color={WIRE.alternative} />
+            <Text numberOfLines={1} className="font-sans text-label-sm font-medium text-gray-500">
+              {post.offerSummary}
+            </Text>
+          </View>
         </View>
+        <ExchangeStatusBadge status={post.status} emphasized />
       </View>
-      <ExchangeStatusBadge status={post.status} />
     </View>
   );
 }
 
-/** 내가 새로 보내는 메시지 (id·보낸 사람·시각은 보낼 때 채운다) */
-type NewMessage = ChatMessage extends infer Message
-  ? Message extends ChatMessage
-    ? Omit<Message, 'id' | 'sender' | 'sentAt'>
-    : never
-  : never;
-
 export function ChatRoomScreen({ roomId }: { roomId: string }) {
-  const room = getMockChatRoom(roomId);
-  const [messages, setMessages] = useState<ChatMessage[]>(room?.messages ?? []);
+  const room = useChatStore((state) => state.rooms[roomId]);
+  const send = useChatStore((state) => state.send);
+  const accept = useChatStore((state) => state.accept);
+  const reject = useChatStore((state) => state.reject);
+
   const [menuOpen, setMenuOpen] = useState(false);
+  /** 수락 확인 모달을 띄운 제안 카드 */
+  const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
 
   if (!room) {
@@ -81,34 +95,36 @@ export function ChatRoomScreen({ roomId }: { roomId: string }) {
     );
   }
 
-  const append = (message: NewMessage) => {
-    setMessages((prev) => [
-      ...prev,
-      { ...message, id: `local-${Date.now()}`, sender: 'me', sentAt: new Date().toISOString() },
-    ]);
-  };
-
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.8,
     });
     if (!result.canceled && result.assets[0]) {
-      append({ type: 'image', uri: result.assets[0].uri });
+      send(room.id, { type: 'image', uri: result.assets[0].uri });
     }
   };
 
   const selectMenu = (key: string) => {
     setMenuOpen(false);
-    if (key === 'photo') {
-      pickPhoto();
-    } else if (key === 'appointment') {
-      router.push({ pathname: '/chat/[id]/appointment', params: { id: room.id } });
+    const run = () => {
+      if (key === 'photo') {
+        pickPhoto();
+      } else if (key === 'appointment') {
+        router.push({ pathname: '/chat/[id]/appointment', params: { id: room.id } });
+      }
+    };
+    // iOS 는 닫히는 중인 모달 위에 사진 선택창을 띄우지 못해서 시트가 닫힌 뒤 연다.
+    // 다른 플랫폼은 바로 실행해야 화면 이동 뒤에 시트가 남지 않는다.
+    if (Platform.OS === 'ios') {
+      setTimeout(run, SHEET_CLOSE_MS);
+    } else {
+      run();
     }
   };
 
   return (
-    <View className="flex-1 bg-surface-deep">
+    <View className="flex-1 bg-gray-50">
       <TopNavigation
         type="screen"
         title={room.partner.nickname}
@@ -119,6 +135,7 @@ export function ChatRoomScreen({ roomId }: { roomId: string }) {
         ]}
       />
       <PostSummary post={room.post} />
+      {room.appointment ? <AppointmentBanner appointment={room.appointment} /> : null}
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -126,31 +143,48 @@ export function ChatRoomScreen({ roomId }: { roomId: string }) {
         <ScrollView
           ref={scrollRef}
           className="flex-1"
-          contentContainerClassName="gap-2 px-3 pb-4"
+          contentContainerClassName="gap-2 px-1.5 pb-4"
           keyboardDismissMode="interactive"
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
-          {messages.map((message, index) => {
-            const previous = messages[index - 1];
+          {room.messages.map((message, index) => {
+            const previous = room.messages[index - 1];
             const showDate = !previous || isDifferentDay(previous.sentAt, message.sentAt);
             return (
               <Fragment key={message.id}>
                 {showDate ? <DateDivider date={message.sentAt} /> : null}
-                <MessageItem message={message} />
+                <MessageItem
+                  message={message}
+                  onAcceptProposal={setAcceptingId}
+                  onRejectProposal={(messageId) => reject(room.id, messageId)}
+                />
               </Fragment>
             );
           })}
         </ScrollView>
         <ChatInput
-          onSend={(text) => append({ type: 'text', text })}
+          onSend={(text) => send(room.id, { type: 'text', text })}
           onPlusPress={() => setMenuOpen(true)}
         />
       </KeyboardAvoidingView>
+
       <SheetMenu
         visible={menuOpen}
-        options={PLUS_MENU}
+        options={plusMenu(room.post.status === 'reserved')}
         onSelect={selectMenu}
         onClose={() => setMenuOpen(false)}
+      />
+      {/* 채팅·약속-6: 약속 수락 모달 */}
+      <WireDialog
+        visible={acceptingId !== null}
+        title="약속을 수락할까요?"
+        description="약속을 수락하면 다른 사람과 잡은 약속은 모두 취소돼요."
+        confirmLabel="확정하기"
+        onCancel={() => setAcceptingId(null)}
+        onConfirm={() => {
+          if (acceptingId) accept(room.id, acceptingId);
+          setAcceptingId(null);
+        }}
       />
     </View>
   );

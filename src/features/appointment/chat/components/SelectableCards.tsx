@@ -1,17 +1,21 @@
-import { semantic } from '@/design-tokens';
+import { Image } from 'expo-image';
 import { Pressable, Text, View } from 'react-native';
-
-import { Checkbox, InteractionLayer, Radio, Thumbnail } from '@/shared/components';
 
 import type { ExchangeItem } from '../types';
 import { ItemConditionBadge } from './StatusBadges';
+import { WireCheckbox, WireRadio } from './wire';
+
+// 약속 잡기의 선택 카드 (와이어프레임 List: 안쪽 16, r8, 선택 시 진한 테두리)
 
 const OUTLINE = {
-  selected: 'border-[1.5px] border-stroke-bold',
-  idle: 'border border-stroke-alpha-subtler',
+  /** 라디오 선택: 2px #364153 */
+  radio: 'border-2 border-gray-700',
+  /** 체크 선택: 1px #364153 */
+  check: 'border border-gray-700',
+  idle: 'border border-gray-150',
 };
 
-/** 라디오가 붙은 선택 카드 (예: 오늘 / 날짜 선택) */
+/** 라디오가 붙은 선택 카드 (예: 오늘 / 날짜 선택). 선택되면 제목 16 Medium */
 export function OptionCard({
   title,
   subtitle,
@@ -28,27 +32,31 @@ export function OptionCard({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       onPress={onPress}
-      className={`min-h-[52px] flex-row items-center gap-3 rounded-xl px-4 py-3 ${selected ? OUTLINE.selected : OUTLINE.idle}`}
+      className={`flex-row items-center gap-4 rounded-8 p-4 ${selected ? OUTLINE.radio : OUTLINE.idle}`}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
-      {({ pressed }) => (
-        <>
-          <View className="flex-1 gap-0.5">
-            <Text className="font-sans text-label-lg font-medium text-object-bolder">{title}</Text>
-            {subtitle ? (
-              <Text className="font-sans text-label-sm text-object-alternative">{subtitle}</Text>
-            ) : null}
-          </View>
-          <View style={{ pointerEvents: 'none' }}>
-            <Radio checked={selected} />
-          </View>
-          <InteractionLayer pressed={pressed} color={semantic.fill.boldest} radius={12} />
-        </>
-      )}
+      <View className="flex-1 gap-0.5">
+        <Text
+          className={`font-sans text-label-lg text-gray-900 ${selected ? 'font-medium' : 'font-normal'}`}
+        >
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text className="font-sans text-[13px] font-normal leading-[20px] text-gray-600">
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      <WireRadio checked={selected} />
     </Pressable>
   );
 }
 
-/** 체크박스가 붙은 물건 카드. outlined 는 흰 화면, elevated 는 회색 배경 위에서 쓴다 */
+/**
+ * 체크박스가 붙은 물건 카드.
+ * outlined: 약속 잡기 (테두리 r8, 이름 옆 태그)
+ * elevated: 물건 선택 화면 (회색 배경 위 흰 카드 r12, 사진 64)
+ */
 export function ItemCheckCard({
   item,
   checked,
@@ -62,10 +70,10 @@ export function ItemCheckCard({
   variant?: 'outlined' | 'elevated';
   showThumbnail?: boolean;
 }) {
-  const container =
-    variant === 'elevated'
-      ? 'rounded-2xl bg-surface-standard p-3'
-      : `rounded-xl px-4 py-3 ${checked ? OUTLINE.selected : OUTLINE.idle}`;
+  const elevated = variant === 'elevated';
+  const container = elevated
+    ? 'gap-3 rounded-12 bg-white p-3'
+    : `gap-4 rounded-8 p-4 ${checked ? OUTLINE.check : OUTLINE.idle}`;
 
   return (
     <Pressable
@@ -73,31 +81,32 @@ export function ItemCheckCard({
       accessibilityState={{ checked }}
       accessibilityLabel={item.name}
       onPress={onPress}
-      className={`flex-row items-center gap-3 ${container}`}
+      className={`flex-row items-center ${container}`}
+      style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
     >
-      {({ pressed }) => (
-        <>
-          {showThumbnail ? (
-            <Thumbnail source={item.imageUrl} size={64} cornerStyle="curved" variant="hollow" />
-          ) : null}
-          <View
-            className={`flex-1 ${showThumbnail ? 'items-start gap-1' : 'flex-row items-center gap-1.5'}`}
-          >
-            <Text numberOfLines={1} className="shrink font-sans text-body-md text-object-bolder">
-              {item.name}
-            </Text>
-            <ItemConditionBadge condition={item.condition} />
-          </View>
-          <View style={{ pointerEvents: 'none' }}>
-            <Checkbox status={checked ? 'checked' : 'unchecked'} />
-          </View>
-          <InteractionLayer
-            pressed={pressed}
-            color={semantic.fill.boldest}
-            radius={variant === 'elevated' ? 16 : 12}
+      {showThumbnail ? (
+        item.imageUrl ? (
+          <Image
+            source={item.imageUrl}
+            contentFit="cover"
+            style={{ width: 64, height: 64, borderRadius: 8 }}
           />
-        </>
-      )}
+        ) : (
+          <View className="size-16 rounded-8 bg-gray-50" />
+        )
+      ) : null}
+      <View
+        className={`flex-1 ${showThumbnail ? 'items-start gap-1' : 'flex-row items-center gap-2'}`}
+      >
+        <Text
+          numberOfLines={1}
+          className="shrink font-sans text-label-lg font-normal text-gray-900"
+        >
+          {item.name}
+        </Text>
+        <ItemConditionBadge condition={item.condition} />
+      </View>
+      <WireCheckbox checked={checked} />
     </Pressable>
   );
 }
